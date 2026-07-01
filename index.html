@@ -296,7 +296,7 @@ td[data-tip]::after{white-space:normal;max-width:260px;word-break:break-word;}
   <div class="topbar-right">
     <span id="ghStatus" class="gh-load">⏳ 연결 중...</span>
     <button class="tb-btn" id="guideBtnEl" onclick="toggleGuide()">❓ 사용 가이드 (닫힘)</button>
-    <button class="tb-btn primary" id="deployBtn2" onclick="openDeployModal()" style="font-size:14px;padding:6px 16px;">📤 HTML 배포</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;"><button class="tb-btn primary" id="deployBtn2" onclick="openDeployModal()" style="font-size:14px;padding:6px 16px;">📤 HTML 배포</button><span id="deployStamp" style="font-size:9px;color:#93C5FD;white-space:nowrap;line-height:1;"></span></div>
     <button class="tb-btn" id="refreshBtn" onclick="loadData(false)" style="font-size:14px;padding:6px 16px;">🔄 최신내용확인</button>
   </div>
 </div>
@@ -811,6 +811,7 @@ window.onload = async () => {
     setGhStatus('err', '❌ 연결 실패 (토큰 확인 필요)');
   }
   await loadData(true);
+  loadDeployStamp();
 };
 
 function setGhStatus(type, msg) {
@@ -896,6 +897,21 @@ async function uploadFile(file, recordId) {
 // HTML 배포 (대시보드 자체 업데이트) — 신규 기능
 // ══════════════════════════════════════════
 let pendingHtmlFile = null;
+function setDeployStamp(d){
+  const el=document.getElementById('deployStamp'); if(!el||!d) return;
+  const z=n=>String(n).padStart(2,'0');
+  el.textContent='🗓 '+d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds())+' 업데이트';
+}
+async function loadDeployStamp(){
+  try{
+    if(!GH.username) return;
+    const c=await ghFetch(`https://api.github.com/repos/${GH.username}/${DEPLOY_REPO}/commits?path=index.html&per_page=1`);
+    if(Array.isArray(c) && c.length){
+      const dt=c[0].commit && c[0].commit.committer && c[0].commit.committer.date;
+      if(dt) setDeployStamp(new Date(dt));
+    }
+  }catch(_){}
+}
 function openDeployModal(){
   pendingHtmlFile = null;
   const fi=document.getElementById('deployFileInfo'); fi.style.display='none'; fi.textContent='';
@@ -947,7 +963,8 @@ async function deployHtml(){
     try{ const ex=await ghFetch(`https://api.github.com/repos/${GH.username}/${DEPLOY_REPO}/contents/${path}`); sha=ex.sha; }catch(_){}
     const body={ message:`Deploy dashboard ${new Date().toISOString().split('T')[0]}`, content:b64 };
     if(sha) body.sha=sha;
-    await ghFetch(`https://api.github.com/repos/${GH.username}/${DEPLOY_REPO}/contents/${path}`,'PUT',body);
+    const dres=await ghFetch(`https://api.github.com/repos/${GH.username}/${DEPLOY_REPO}/contents/${path}`,'PUT',body);
+    try{ const _dt=dres&&dres.commit&&dres.commit.committer&&dres.commit.committer.date; setDeployStamp(_dt?new Date(_dt):new Date()); }catch(_){ setDeployStamp(new Date()); }
     const pagesUrl=`https://${GH.username}.github.io/${DEPLOY_REPO}/`+(path==='index.html'?'':path);
     st.innerHTML='<span style="color:var(--green);font-weight:600;">✅ 배포 완료!</span><br>'+
       '<span style="color:var(--muted);">사용자들은 아래 링크를 새로고침하면 최신 버전을 봅니다.</span><br>'+
