@@ -448,7 +448,7 @@ td[data-tip]::after{white-space:normal;max-width:260px;word-break:break-word;}
         <thead>
           <tr>
             <th style="width:40px" onclick="srt(0)" rowspan="2">No</th>
-            <th style="width:58px" rowspan="2">구분</th>
+            <th style="width:58px" rowspan="2" onclick="srt(13)">구분</th>
             <th onclick="srt(1)" rowspan="2">접수일</th>
             <th onclick="srt(2)" rowspan="2">공정</th>
             <th onclick="srt(3)" rowspan="2">고객사</th>
@@ -1098,8 +1098,22 @@ function populateFilters() {
   sel.value=cur;
 }
 
-const SRT_KEYS=['_i','recvDate','process','customer','model','defect','qty','fmaDate','farDate','duration','status','analyst','duration1'];
+const SRT_KEYS=['_i','recvDate','process','customer','model','defect','qty','fmaDate','farDate','duration','status','analyst','duration1','analysisType'];
 function srt(c){if(sortCol===c)sortDir*=-1;else{sortCol=c;sortDir=1;}renderTable();}
+function updateSortArrows(){
+  document.querySelectorAll('.tbl-section thead th').forEach(th=>{
+    const old=th.querySelector('.srt-arrow'); if(old) old.remove();
+    const oc=th.getAttribute('onclick')||'';
+    const m=oc.match(/srt\((\d+)\)/);
+    if(!m) return;
+    const col=+m[1], active=(col===sortCol);
+    const sp=document.createElement('span');
+    sp.className='srt-arrow';
+    sp.style.cssText='font-size:10px;margin-left:3px;color:'+(active?'var(--blue)':'#CBD5E1')+';';
+    sp.textContent=active?(sortDir===1?'▲':'▼'):'↕';
+    th.appendChild(sp);
+  });
+}
 
 function renderTable() {
   const q=(document.getElementById('srchInp').value||'').toLowerCase();
@@ -1117,6 +1131,7 @@ function renderTable() {
       return String(av).localeCompare(String(bv),'ko')*sortDir;});
   }
   document.getElementById('rowCnt').textContent='('+rows.length+'건)';
+  updateSortArrows();
   const body=document.getElementById('tblBody');
   if(!rows.length){body.innerHTML=`<tr class="empty-row"><td colspan="15">데이터 없음</td></tr>`;return;}
   body.innerHTML=rows.map((d,idx)=>{
