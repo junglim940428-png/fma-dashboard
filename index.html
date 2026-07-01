@@ -82,13 +82,13 @@ body{background:var(--bg);color:var(--text);font-family:'Malgun Gothic','Apple S
 .search-inp:focus{border-color:var(--blue);}
 .flt-sel{padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:12px;font-family:inherit;background:var(--s2);color:var(--text);outline:none;cursor:pointer;}
 .tbl-wrap{overflow:auto;max-height:calc(100vh - 200px);}
-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;}
 thead th{background:var(--s2);padding:7px 6px;text-align:center;font-size:15px;font-weight:600;color:var(--muted);white-space:normal;word-break:keep-all;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
 thead th:hover{color:var(--blue);}
 .tbl-wrap thead{position:sticky;top:0;z-index:15;box-shadow:0 2px 4px rgba(0,0,0,.06);}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer;}
 tbody tr:hover{background:var(--blue-bg);}
-tbody td{padding:10px 8px;vertical-align:middle;font-size:15px;text-align:center;}
+tbody td{padding:10px 8px;vertical-align:middle;font-size:15px;text-align:center;border-bottom:1px solid var(--border);}
 .td-m{color:var(--muted);}
 .td-clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
@@ -560,8 +560,6 @@ td[data-tip]::after{white-space:normal;max-width:260px;word-break:break-word;}
             <input type="number" id="f-duration" placeholder="자동계산" step="0.1" min="0">
             <span class="hint">📅 FMA요청일 → 최종 FAR 일자</span>
           </div>
-          <div class="fg"><label>분석 완료 일자 <span style="font-size:10px;color:var(--muted);font-weight:400;">(숫자만 입력)</span></label><input type="text" placeholder="0000년 00월 00일" maxlength="13" id="f-completePlan"><span class="hint">📋 분석 Report 전달</span></div>
-          <div class="fg"><label>대책서 접수일 <span style="font-size:10px;color:var(--muted);font-weight:400;">(숫자만 입력)</span></label><input type="text" placeholder="0000년 00월 00일" maxlength="13" id="f-actionRecvDate"></div>
           <div class="fg fg-full"><label>FMA 결과 요약</label><textarea id="f-fmaResult" rows="4" placeholder="분석 결과 입력"></textarea></div>
           <div class="fg-sep">분석 리포트</div>
           <div class="fg fg-full">
@@ -681,7 +679,7 @@ let procChart = null;
 let analystChart = null;
 
 // ── 날짜 필드 목록 및 마스킹 ──
-const DATE_FIELDS=['recvDate','fmaDate','rmaIssueDate','shipDate','delivDate','farSubmitDate','farDate','far1','completePlan','actionRecvDate'];
+const DATE_FIELDS=['recvDate','fmaDate','rmaIssueDate','shipDate','delivDate','farSubmitDate','farDate','far1'];
 
 function initDateMasks(){
   DATE_FIELDS.forEach(f=>{
@@ -984,6 +982,7 @@ async function deployHtml(){
 
 
 function refreshAll() {
+  DATA.forEach(d=>{ if(d.farSubmitDate && d.status!=='취소' && d.status!=='완료') d.status='완료'; });
   updateKPI();
   updateCharts();
   updateStatusLists();
@@ -1183,7 +1182,7 @@ function openView(id) {
     sec('기본 정보',row('접수날짜',d.recvDate)+row('분석담당자',d.analyst)+row('발생공정',d.process)+row('고객사',d.customer)+row('모델명',d.model)+row('업체명',d.maker)+row('불량수',d.qty+'EA')+row('불량내용',d.defect)+row('분석구분',d.analysisType||'–')+row('S/N',d.sn,true))+
     sec('진행 현황',row('FMA요청일',d.fmaDate)+row('RMA No.',d.rma)+row('RMA발행일',d.rmaIssueDate)+row('DHL TRK.',d.dhlTrk)+row('발송일',d.shipDate)+row('배송완료',d.delivDate)+row('진행현황메모',d.memo,true))+
     sec('FAR 현황',row('최초FAR',d.far1)+row('최종FAR',d.farDate)+row('FAR제출일자',d.farSubmitDate))+
-    sec('완료 & 결과',row('완료여부',d.status)+row('최초소요기간',d.duration1?d.duration1+'주':'–')+row('최종소요기간',d.duration?d.duration+'주':'–')+row('분석 완료 일자',d.completePlan)+row('대책서접수일',d.actionRecvDate)+row('FMA결과',d.fmaResult,true))+
+    sec('완료 & 결과',row('완료여부',d.status)+row('최초소요기간',d.duration1?d.duration1+'주':'–')+row('최종소요기간',d.duration?d.duration+'주':'–')+row('FMA결과',d.fmaResult,true))+
     (d.reportLink?`<div class="vm-section"><div class="vm-section-title">분석 리포트</div><button class="btn-rpt" onclick="openReport(this.dataset.link,this.dataset.name)" data-link="${esc(d.reportLink)}" data-name="${esc(d.reportName||'리포트')}">📄 리포트 열기</button></div>`:'');
   document.getElementById('viewModal').classList.add('open');
 }
@@ -1193,26 +1192,21 @@ function analysisSteps(d){
   if(d.analysisType==='정림자체분석'){
     return [
       {k:'접수',    done:!!d.recvDate},
-      {k:'FMA요청', done:!!d.fmaDate},
-      {k:'최초FAR', done:!!d.far1},
-      {k:'최종FAR', done:!!d.farDate},
-      {k:'완료',    done:d.status==='완료'}
+      {k:'FAR제출', done:!!d.farSubmitDate}
     ];
   }
   return [
-    {k:'접수',     done:!!d.recvDate},
-    {k:'FMA요청',  done:!!d.fmaDate},
-    {k:'발송',     done:!!d.shipDate},
-    {k:'배송완료', done:!!d.delivDate},
-    {k:'최초FAR',  done:!!d.far1},
-    {k:'최종FAR',  done:!!d.farDate},
-    {k:'완료',     done:d.status==='완료'}
+    {k:'접수',    done:!!d.recvDate},
+    {k:'FMA요청', done:!!d.fmaDate},
+    {k:'발송',    done:!!d.shipDate},
+    {k:'최초FAR', done:!!d.far1},
+    {k:'FAR제출', done:!!d.farSubmitDate}
   ];
 }
 function progressCell(d, badge){
   if(d.status==='취소') return badge;   // 취소 건은 기존 배지만
   const steps=analysisSteps(d);
-  const allDone=d.status==='완료';
+  const allDone=d.status==='완료'||!!d.farSubmitDate;
   const doneCnt=allDone?steps.length:steps.filter(s=>s.done).length;
   const nextIdx=allDone?-1:steps.findIndex(s=>!s.done);
   let seg='';
@@ -1277,7 +1271,7 @@ async function saveAndClose(){
 
 function fmTab(name){}
 
-const FIELDS=['recvDate','analyst','process','customer','model','maker','qty','defect','analysisType','sn','memo','fmaDate','rma','rmaIssueDate','dhlTrk','shipDate','delivDate','actionRequired','qcnNo','qcnDate','actionReqDate','actionDelayDate','cause','farSubmitDate','farDate','far1','far2','far3','status','duration1','duration','completePlan','fmaResult','actionRecvDate','inspDate','reportLink','delPassword'];
+const FIELDS=['recvDate','analyst','process','customer','model','maker','qty','defect','analysisType','sn','memo','fmaDate','rma','rmaIssueDate','dhlTrk','shipDate','delivDate','actionRequired','qcnNo','qcnDate','actionReqDate','actionDelayDate','cause','farSubmitDate','farDate','far1','far2','far3','status','duration1','duration','fmaResult','inspDate','reportLink','delPassword'];
 const CHECKS=['actionAttach','tripReg','tripComplete','quadrant'];
 
 function resetForm(){
@@ -1358,6 +1352,7 @@ function getFormData(){
   if(obj.qty) obj.qty=parseInt(obj.qty)||0;
   if(obj.duration1) obj.duration1=parseFloat(obj.duration1)||null;
   if(obj.duration) obj.duration=parseFloat(obj.duration)||null;
+  if(obj.farSubmitDate && obj.status!=='취소') obj.status='완료';
   return obj;
 }
 
