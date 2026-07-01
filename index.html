@@ -1140,6 +1140,8 @@ function renderTable() {
     const dc1=dur1===null?'':dur1<=5?'dur-fast':dur1<=10?'dur-med':'dur-slow';
     const dur=d.duration&&parseFloat(d.duration)>0?parseFloat(d.duration):null;
     const dc=dur===null?'':dur<=5?'dur-fast':dur<=10?'dur-med':'dur-slow';
+    const sameDayDone = d.analysisType==='정림자체분석' && d.recvDate && d.farSubmitDate && d.recvDate===d.farSubmitDate;
+    const durFinalHtml = sameDayDone ? '<span style="color:var(--green);font-weight:600;">당일분석완료</span>' : (dur!==null?dur+'주':'–');
     const sb=d.status==='취소'?`<span class="badge b-cancel">✕ 취소</span>`:d.status==='완료'?`<span class="badge b-done">✓ 완료</span>`:`<span class="badge b-ing">⟳ 진행중</span>`;
     const pb=d.process?`<span class="badge b-proc">${esc(d.process)}</span>`:'–';
     // FAR 요약
@@ -1174,7 +1176,7 @@ function renderTable() {
       <td class="td-m">${d.fmaDate||'–'}</td>
       <td class="td-m">${farSummary}</td>
       <td class="${dc1}" style="text-align:center;white-space:nowrap;">${dur1!==null?dur1+'주':'–'}</td>
-      <td class="${dc}" style="text-align:center;white-space:nowrap;">${dur!==null?dur+'주':'–'}</td>
+      <td class="${sameDayDone?'':dc}" style="text-align:center;white-space:nowrap;">${durFinalHtml}</td>
       <td>${progressCell(d, sb)}</td>
       <td>${rBtn}</td>
       ${mgrBtns}
